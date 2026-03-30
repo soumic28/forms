@@ -18,7 +18,7 @@
       }
       body {
         margin: 0;
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: "Segoe UI", Arial, sans-serif;
         background: #f5f5f5;
         color: var(--text);
         line-height: 1.5;
@@ -96,7 +96,8 @@
         font-size: 14px;
         transition: border-color 0.2s;
       }
-      input:focus, textarea:focus {
+      input:focus,
+      textarea:focus {
         outline: none;
         border-color: var(--purple);
       }
@@ -156,10 +157,19 @@
         text-transform: uppercase;
         font-weight: bold;
       }
-      .sync-badge.synced { background: #e6f4ea; color: var(--success); }
-      .sync-badge.pending { background: #fef7e0; color: var(--pending); }
-      .sync-badge.remote { background: #e8f0fe; color: #1a73e8; }
-      
+      .sync-badge.synced {
+        background: #e6f4ea;
+        color: var(--success);
+      }
+      .sync-badge.pending {
+        background: #fef7e0;
+        color: var(--pending);
+      }
+      .sync-badge.remote {
+        background: #e8f0fe;
+        color: #1a73e8;
+      }
+
       #entries .meta {
         color: #5f6368;
         font-size: 12px;
@@ -188,9 +198,13 @@
         border-radius: 50%;
         margin-right: 5px;
       }
-      .status-ok { background: var(--success); }
-      .status-err { background: #ea4335; }
-      
+      .status-ok {
+        background: var(--success);
+      }
+      .status-err {
+        background: #ea4335;
+      }
+
       .loader {
         width: 16px;
         height: 16px;
@@ -201,8 +215,12 @@
         animation: rotation 1s linear infinite;
       }
       @keyframes rotation {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -212,10 +230,15 @@
       <div class="form-card">
         <div class="server-settings">
           <label>Server URL:</label>
-          <input type="text" id="serverUrl" value="https://forms-five-hazel.vercel.app" placeholder="e.g. http://192.168.1.10:3000" />
+          <input
+            type="text"
+            id="serverUrl"
+            value="https://forms-five-hazel.vercel.app"
+            placeholder="e.g. http://192.168.1.10:3000"
+          />
         </div>
         <div class="form-header">
-          <h1>Bareilly Kitab Utsav</h1>
+          <h1>Bareilly Kitab Utsav - 01</h1>
           <p class="sub">April 03-07, 2026 | Offline Entry Form</p>
         </div>
 
@@ -390,16 +413,21 @@
 
       <div class="buttons">
         <button id="showBtn">Show Local Entries</button>
-        <button id="fetchBtn" style="background: var(--accent); border-color: var(--purple);">Fetch from Server</button>
+        <button
+          id="fetchBtn"
+          style="background: var(--accent); border-color: var(--purple)"
+        >
+          Fetch from Server
+        </button>
         <button id="copyBtn">Copy All Data</button>
         <button id="testBtn">Test Connection</button>
-        <button id="debugBtn" style="background: #eee;">Debug Logs</button>
+        <button id="debugBtn" style="background: #eee">Debug Logs</button>
         <button id="exportJsonBtn">Export JSON</button>
         <button id="exportCsvBtn">Export CSV</button>
       </div>
 
       <div id="entries"></div>
-      
+
       <div id="debugPanel" class="debug-panel">
         <strong>Mobile Diagnostics:</strong>
         <div id="debugContent"></div>
@@ -412,7 +440,14 @@
       const DB_STORE = "entries";
 
       const FIELD_ORDER = [
-        "name", "number", "email", "ageGroup", "source", "pinCode", "feedback", "time"
+        "name",
+        "number",
+        "email",
+        "ageGroup",
+        "source",
+        "pinCode",
+        "feedback",
+        "time",
       ];
 
       const FIELD_LABELS = {
@@ -446,9 +481,11 @@
 
       const request = indexedDB.open(DB_NAME, 2);
 
-      request.onerror = function(event) {
+      request.onerror = function (event) {
         log("IndexedDB failed: " + event.target.error, "err");
-        alert("CRITICAL: Local database is blocked. If you are on iPhone, try opening this file in Chrome instead of Safari, or disable 'Incognito' mode.");
+        alert(
+          "CRITICAL: Local database is blocked. If you are on iPhone, try opening this file in Chrome instead of Safari, or disable 'Incognito' mode.",
+        );
       };
 
       request.onupgradeneeded = function (event) {
@@ -457,7 +494,10 @@
         const oldVersion = event.oldVersion;
         let store;
         if (oldVersion < 1) {
-          store = db.createObjectStore(DB_STORE, { keyPath: "id", autoIncrement: true });
+          store = db.createObjectStore(DB_STORE, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
         } else {
           store = event.target.transaction.objectStore(DB_STORE);
         }
@@ -471,77 +511,84 @@
         if (navigator.onLine) syncToServer();
       };
 
-      document.getElementById("myForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        const btn = document.getElementById("submitBtn");
-        const btnText = btn.querySelector('span');
-        
-        // Show loading state
-        btn.disabled = true;
-        btnText.innerHTML = 'Saving... <div class="loader"></div>';
+      document
+        .getElementById("myForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          const btn = document.getElementById("submitBtn");
+          const btnText = btn.querySelector("span");
 
-        const entry = {
-          name: document.getElementById("name").value.trim(),
-          number: document.getElementById("number").value.trim(),
-          email: document.getElementById("email").value.trim(),
-          ageGroup: getCheckedValue("ageGroup"),
-          source: getCheckedValue("source"),
-          pinCode: document.getElementById("pinCode").value.trim(),
-          feedback: document.getElementById("feedback").value.trim(),
-          time: new Date().toISOString(),
-          synced: false,
-        };
+          // Show loading state
+          btn.disabled = true;
+          btnText.innerHTML = 'Saving... <div class="loader"></div>';
 
-        const tx = db.transaction([DB_STORE], "readwrite");
-        const store = tx.objectStore(DB_STORE);
-        
-        tx.onerror = (e) => {
+          const entry = {
+            name: document.getElementById("name").value.trim(),
+            number: document.getElementById("number").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            ageGroup: getCheckedValue("ageGroup"),
+            source: getCheckedValue("source"),
+            pinCode: document.getElementById("pinCode").value.trim(),
+            feedback: document.getElementById("feedback").value.trim(),
+            time: new Date().toISOString(),
+            synced: false,
+          };
+
+          const tx = db.transaction([DB_STORE], "readwrite");
+          const store = tx.objectStore(DB_STORE);
+
+          tx.onerror = (e) => {
             log("Transaction Error: " + e.target.error);
             alert("Storage full or blocked!");
             finishSubmit();
-        };
+          };
 
-        const addReq = store.add(entry);
+          const addReq = store.add(entry);
 
-        addReq.onsuccess = (e) => {
-          const id = e.target.result;
-          entry.id = id;
-          log("Saved locally to ID: " + id);
-          
-          // Reset Form
-          document.getElementById("myForm").reset();
-          
-          // Proactive Sync
-          if (navigator.onLine) {
-            log("Online detected. Syncing...");
-            sendEntry(entry).then(() => {
-                log("Sync successful!");
-            }).catch(err => {
-                log("Immediate sync failed (expected if offline or CORS)");
-            }).finally(() => {
-                finishSubmit();
-            });
-          } else {
-            log("Offline mode. Stored locally.");
-            alert("Saved Offline! Will sync when online.");
-            finishSubmit();
-          }
-        };
+          addReq.onsuccess = (e) => {
+            const id = e.target.result;
+            entry.id = id;
+            log("Saved locally to ID: " + id);
 
-        addReq.onerror = (e) => {
+            // Reset Form
+            document.getElementById("myForm").reset();
+
+            // Proactive Sync
+            if (navigator.onLine) {
+              log("Online detected. Syncing...");
+              sendEntry(entry)
+                .then(() => {
+                  log("Sync successful!");
+                })
+                .catch((err) => {
+                  log("Immediate sync failed (expected if offline or CORS)");
+                })
+                .finally(() => {
+                  finishSubmit();
+                });
+            } else {
+              log("Offline mode. Stored locally.");
+              alert("Saved Offline! Will sync when online.");
+              finishSubmit();
+            }
+          };
+
+          addReq.onerror = (e) => {
             log("Add Request Error: " + e.target.error);
             alert("Could not save. Check browser settings.");
             finishSubmit();
-        };
-        
-        function finishSubmit() {
-            btn.disabled = false;
-            btnText.innerHTML = 'Save Offline';
-            showLocalEntries();
-        }
-      });
+          };
 
-      document.getElementById("showBtn").addEventListener("click", showLocalEntries);
+          function finishSubmit() {
+            btn.disabled = false;
+            btnText.innerHTML = "Save Offline";
+            showLocalEntries();
+          }
+        });
+
+      document
+        .getElementById("showBtn")
+        .addEventListener("click", showLocalEntries);
 
       function showLocalEntries() {
         const entriesDiv = document.getElementById("entries");
@@ -550,7 +597,7 @@
         const tx = db.transaction([DB_STORE], "readonly");
         const store = tx.objectStore(DB_STORE);
 
-        store.openCursor(null, 'prev').onsuccess = function (event) {
+        store.openCursor(null, "prev").onsuccess = function (event) {
           const cursor = event.target.result;
           if (cursor) {
             entriesDiv.innerHTML += renderEntry(cursor.value);
@@ -559,74 +606,88 @@
         };
       }
 
-      document.getElementById("fetchBtn").addEventListener("click", function() {
-        const entriesDiv = document.getElementById("entries");
-        const fetchBtn = document.getElementById("fetchBtn");
-        fetchBtn.disabled = true;
-        fetchBtn.innerText = "Fetching...";
-        
-        fetch(`${getServerUrl()}/entries`)
-          .then(res => res.json())
-          .then(data => {
-            entriesDiv.innerHTML = `<h3>Server Entries (Global)</h3>`;
-            if (data.length === 0) entriesDiv.innerHTML += "<p>No entries found on server.</p>";
-            data.forEach(item => {
+      document
+        .getElementById("fetchBtn")
+        .addEventListener("click", function () {
+          const entriesDiv = document.getElementById("entries");
+          const fetchBtn = document.getElementById("fetchBtn");
+          fetchBtn.disabled = true;
+          fetchBtn.innerText = "Fetching...";
+
+          fetch(`${getServerUrl()}/entries`)
+            .then((res) => res.json())
+            .then((data) => {
+              entriesDiv.innerHTML = `<h3>Server Entries (Global)</h3>`;
+              if (data.length === 0)
+                entriesDiv.innerHTML += "<p>No entries found on server.</p>";
+              data.forEach((item) => {
                 entriesDiv.innerHTML += renderEntry({
-                    ...item,
-                    ageGroup: item.age_group,
-                    pinCode: item.pin_code,
-                    time: item.submitted_at || item.created_at,
-                    remote: true
+                  ...item,
+                  ageGroup: item.age_group,
+                  pinCode: item.pin_code,
+                  time: item.submitted_at || item.created_at,
+                  remote: true,
                 });
+              });
+            })
+            .catch((err) => {
+              alert("Error fetching from server. Check URL or connection.");
+              console.error(err);
+            })
+            .finally(() => {
+              fetchBtn.disabled = false;
+              fetchBtn.innerText = "Fetch from Server";
             });
-          })
-          .catch(err => {
-            alert("Error fetching from server. Check URL or connection.");
-            console.error(err);
-          })
-          .finally(() => {
-            fetchBtn.disabled = false;
-            fetchBtn.innerText = "Fetch from Server";
-          });
-      });
+        });
 
       document.getElementById("copyBtn").addEventListener("click", function () {
         exportAllData().then((data) => {
-          if (data.length === 0) { alert("No data to copy"); return; }
+          if (data.length === 0) {
+            alert("No data to copy");
+            return;
+          }
           const text = JSON.stringify(data, null, 2);
-          navigator.clipboard.writeText(text).then(() => {
-            alert("All entries copied to clipboard!");
-          }).catch(err => {
-            console.error("Clipboard error", err);
-            // Fallback for some mobile browsers
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
-            alert("All entries copied to clipboard!");
-          });
+          navigator.clipboard
+            .writeText(text)
+            .then(() => {
+              alert("All entries copied to clipboard!");
+            })
+            .catch((err) => {
+              console.error("Clipboard error", err);
+              // Fallback for some mobile browsers
+              const textarea = document.createElement("textarea");
+              textarea.value = text;
+              document.body.appendChild(textarea);
+              textarea.select();
+              document.execCommand("copy");
+              document.body.removeChild(textarea);
+              alert("All entries copied to clipboard!");
+            });
         });
       });
 
-      document.getElementById("testBtn").addEventListener("click", function() {
+      document.getElementById("testBtn").addEventListener("click", function () {
         const btn = document.getElementById("testBtn");
         btn.disabled = true;
         btn.innerText = "Testing...";
         log("Testing connection to " + getServerUrl() + "/...");
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        fetch(getServerUrl() + "/", { mode: 'no-cors', signal: controller.signal })
+        fetch(getServerUrl() + "/", {
+          mode: "no-cors",
+          signal: controller.signal,
+        })
           .then(() => {
             log("Server is reachable!");
             alert("Success! Your phone can talk to the server.");
           })
-          .catch(err => {
+          .catch((err) => {
             log("Connection failed: " + err.message);
-            alert("Failed! Cannot reach server. Check URL, IP, or if Server is running.");
+            alert(
+              "Failed! Cannot reach server. Check URL, IP, or if Server is running.",
+            );
           })
           .finally(() => {
             clearTimeout(timeoutId);
@@ -635,14 +696,21 @@
           });
       });
 
-      document.getElementById("debugBtn").addEventListener("click", function() {
-        const panel = document.getElementById("debugPanel");
-        panel.style.display = panel.style.display === "block" ? "none" : "block";
-      });
+      document
+        .getElementById("debugBtn")
+        .addEventListener("click", function () {
+          const panel = document.getElementById("debugPanel");
+          panel.style.display =
+            panel.style.display === "block" ? "none" : "block";
+        });
 
-      document.getElementById("exportJsonBtn").addEventListener("click", function () {
+      document
+        .getElementById("exportJsonBtn")
+        .addEventListener("click", function () {
           exportAllData().then((data) => {
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const blob = new Blob([JSON.stringify(data, null, 2)], {
+              type: "application/json",
+            });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -651,13 +719,23 @@
           });
         });
 
-      document.getElementById("exportCsvBtn").addEventListener("click", function () {
+      document
+        .getElementById("exportCsvBtn")
+        .addEventListener("click", function () {
           exportAllData().then((data) => {
-            if (data.length === 0) { alert("No data found"); return; }
-            const header = FIELD_ORDER.map((k) => `"${FIELD_LABELS[k]}"`).join(",") + "\n";
-            const rows = data.map((obj) =>
-                FIELD_ORDER.map((k) => `"${String(obj[k] || "").replace(/"/g, '""')}"`).join(",")
-              ).join("\n");
+            if (data.length === 0) {
+              alert("No data found");
+              return;
+            }
+            const header =
+              FIELD_ORDER.map((k) => `"${FIELD_LABELS[k]}"`).join(",") + "\n";
+            const rows = data
+              .map((obj) =>
+                FIELD_ORDER.map(
+                  (k) => `"${String(obj[k] || "").replace(/"/g, '""')}"`,
+                ).join(","),
+              )
+              .join("\n");
             const blob = new Blob([header + rows], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -674,8 +752,10 @@
           const all = [];
           store.openCursor().onsuccess = function (e) {
             const cursor = e.target.result;
-            if (cursor) { all.push(cursor.value); cursor.continue(); } 
-            else resolve(all);
+            if (cursor) {
+              all.push(cursor.value);
+              cursor.continue();
+            } else resolve(all);
           };
         });
       }
@@ -714,8 +794,8 @@
             return res;
           })
           .catch((err) => {
-             console.warn("Sync failed", err);
-             throw err;
+            console.warn("Sync failed", err);
+            throw err;
           });
       }
 
@@ -733,13 +813,13 @@
       }
 
       function renderEntry(entry) {
-        let badge = '';
+        let badge = "";
         if (entry.remote) {
-            badge = '<span class="sync-badge remote">Cloud</span>';
+          badge = '<span class="sync-badge remote">Cloud</span>';
         } else {
-            badge = entry.synced 
-                ? '<span class="sync-badge synced">Synced</span>' 
-                : '<span class="sync-badge pending">Pending</span>';
+          badge = entry.synced
+            ? '<span class="sync-badge synced">Synced</span>'
+            : '<span class="sync-badge pending">Pending</span>';
         }
 
         return `
@@ -750,7 +830,7 @@
           <div style="font-size: 13px; margin-top: 5px;">
             <b>Age:</b> ${entry.ageGroup} | <b>Source:</b> ${entry.source} | <b>Pin:</b> ${entry.pinCode}
           </div>
-          ${entry.feedback ? `<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"${entry.feedback}"</div>` : ''}
+          ${entry.feedback ? `<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"${entry.feedback}"</div>` : ""}
           <div class="meta">${new Date(entry.time).toLocaleString()}</div>
         </div>`;
       }
