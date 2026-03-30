@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
   <head>
-    <title>Bareilly Kitab Utsav - Offline Form</title>
+    <title>Patna Kitab Utsav - Offline Form</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <style>
@@ -436,10 +436,10 @@
 
     <script>
       // GLOBAL ERROR CATCHER FOR MOBILE
-      window.onerror = function(msg, url, line, col, error) {
+      window.onerror = function (msg, url, line, col, error) {
         var errMsg = "JS ERROR: " + msg + "\nLine: " + line;
         alert(errMsg);
-        if (typeof log === 'function') log(errMsg, "err");
+        if (typeof log === "function") log(errMsg, "err");
         return false;
       };
 
@@ -470,10 +470,10 @@
       };
 
       // Load saved server URL
-      var savedUrl = (function() {
+      var savedUrl = (function () {
         try {
           return localStorage.getItem("offline_form_server_url");
-        } catch(e) {
+        } catch (e) {
           console.warn("localStorage blocked");
           return null;
         }
@@ -484,7 +484,7 @@
         var url = document.getElementById("serverUrl").value.trim();
         try {
           localStorage.setItem("offline_form_server_url", url);
-        } catch(e) {}
+        } catch (e) {}
         return url.lastIndexOf("/") === url.length - 1 ? url.slice(0, -1) : url;
       }
 
@@ -492,8 +492,21 @@
         var panel = document.getElementById("debugPanel");
         var content = document.getElementById("debugContent");
         var time = new Date().toLocaleTimeString();
-        var style = type === "err" ? "color:#ff5555" : (type === "warn" ? "color:#ffcc00" : "");
-        content.innerHTML = '<span style="' + style + '">[' + time + "] " + msg + "</span><br>" + content.innerHTML;
+        var style =
+          type === "err"
+            ? "color:#ff5555"
+            : type === "warn"
+              ? "color:#ffcc00"
+              : "";
+        content.innerHTML =
+          '<span style="' +
+          style +
+          '">[' +
+          time +
+          "] " +
+          msg +
+          "</span><br>" +
+          content.innerHTML;
         console.log("[FORM DEBUG] " + msg);
       }
 
@@ -501,38 +514,55 @@
       log("Initializing Database...");
       log("Protocol: " + window.location.protocol);
       if (window.location.protocol.indexOf("content") !== -1) {
-        log("Warning: Opened via 'content://' URI. This may block IndexedDB on Android Chrome.", "warn");
+        log(
+          "Warning: Opened via 'content://' URI. This may block IndexedDB on Android Chrome.",
+          "warn",
+        );
       }
 
       if (!window.indexedDB) {
         log("CRITICAL: IndexedDB NOT supported by this browser!", "err");
-        alert("Your browser does not support offline saving. Please use Chrome or Safari.");
+        alert(
+          "Your browser does not support offline saving. Please use Chrome or Safari.",
+        );
       }
 
       var request = indexedDB.open(DB_NAME, 2);
 
-      request.onblocked = function() {
+      request.onblocked = function () {
         log("DB Blocked: Please close other tabs of this page!", "warn");
-        alert("Database is blocked. Please close other open tabs of this form.");
+        alert(
+          "Database is blocked. Please close other open tabs of this form.",
+        );
       };
 
       request.onerror = function (event) {
-        var err = event.target.error ? event.target.error.name : "Unknown Error";
+        var err = event.target.error
+          ? event.target.error.name
+          : "Unknown Error";
         log("IndexedDB Opening Error: " + err, "err");
-        
+
         if (err === "SecurityError") {
-          alert("CRITICAL: Privacy settings or 'Incognito' mode are blocking the database. Please open in a normal tab.");
+          alert(
+            "CRITICAL: Privacy settings or 'Incognito' mode are blocking the database. Please open in a normal tab.",
+          );
         } else {
-          alert("Database Error: " + err + ". If on mobile, don't open from WhatsApp; save to 'Downloads' and open in Chrome directly.");
+          alert(
+            "Database Error: " +
+              err +
+              ". If on mobile, don't open from WhatsApp; save to 'Downloads' and open in Chrome directly.",
+          );
         }
       };
 
       request.onupgradeneeded = function (event) {
-        log("Database upgrade/init started (v" + event.oldVersion + " -> v2)...");
+        log(
+          "Database upgrade/init started (v" + event.oldVersion + " -> v2)...",
+        );
         db = event.target.result;
         var oldVersion = event.oldVersion;
         var store;
-        
+
         try {
           if (oldVersion < 1) {
             store = db.createObjectStore(DB_STORE, {
@@ -544,7 +574,7 @@
             store = event.target.transaction.objectStore(DB_STORE);
             log("Existing object store found.");
           }
-          
+
           if (!store.indexNames.contains("synced")) {
             store.createIndex("synced", "synced", { unique: false });
             log("Index 'synced' created.");
@@ -557,10 +587,13 @@
       request.onsuccess = function (event) {
         db = event.target.result;
         log("Database ready!");
-        
-        db.onversionchange = function() {
+
+        db.onversionchange = function () {
           db.close();
-          log("Database version changed elsewhere. Closing this connection.", "warn");
+          log(
+            "Database version changed elsewhere. Closing this connection.",
+            "warn",
+          );
         };
 
         if (navigator.onLine) {
@@ -573,15 +606,16 @@
         .getElementById("myForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
-          if (!db) { 
-            var msg = (window.location.protocol.indexOf("content") !== -1)
-              ? "Database not ready. YOU ARE OPENING THIS WRONG. Please save the file to your phone first, then open it directly in Chrome."
-              : "Database not ready yet. If this persists, your browser may be blocking local storage (Privacy/Incognito mode).";
-            alert(msg); 
+          if (!db) {
+            var msg =
+              window.location.protocol.indexOf("content") !== -1
+                ? "Database not ready. YOU ARE OPENING THIS WRONG. Please save the file to your phone first, then open it directly in Chrome."
+                : "Database not ready yet. If this persists, your browser may be blocking local storage (Privacy/Incognito mode).";
+            alert(msg);
             log("Submit denied: db is null", "err");
-            return; 
+            return;
           }
-          
+
           var btn = document.getElementById("submitBtn");
           var btnText = btn.querySelector("span");
 
@@ -604,7 +638,7 @@
           var tx = db.transaction([DB_STORE], "readwrite");
           var store = tx.objectStore(DB_STORE);
 
-          tx.onerror = function(e) {
+          tx.onerror = function (e) {
             log("Transaction Error: " + e.target.error);
             alert("Storage full or blocked!");
             finishSubmit();
@@ -612,7 +646,7 @@
 
           var addReq = store.add(entry);
 
-          addReq.onsuccess = function(e) {
+          addReq.onsuccess = function (e) {
             var id = e.target.result;
             entry.id = id;
             log("Saved locally to ID: " + id);
@@ -624,11 +658,11 @@
             if (navigator.onLine) {
               log("Online detected. Syncing...");
               sendEntry(entry)
-                .then(function() {
+                .then(function () {
                   log("Sync successful!");
                   finishSubmit();
                 })
-                .catch(function(err) {
+                .catch(function (err) {
                   log("Sync failed: " + err.message);
                   finishSubmit();
                 });
@@ -639,7 +673,7 @@
             }
           };
 
-          addReq.onerror = function(e) {
+          addReq.onerror = function (e) {
             log("Add Request Error: " + e.target.error);
             alert("Could not save. Check browser settings.");
             finishSubmit();
@@ -682,12 +716,14 @@
           fetchBtn.innerText = "Fetching...";
 
           fetch(getServerUrl() + "/entries")
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
+            .then(function (res) {
+              return res.json();
+            })
+            .then(function (data) {
               entriesDiv.innerHTML = "<h3>Server Entries (Global)</h3>";
               if (!data || data.length === 0)
                 entriesDiv.innerHTML += "<p>No entries found on server.</p>";
-              data.forEach(function(item) {
+              data.forEach(function (item) {
                 entriesDiv.innerHTML += renderEntry({
                   id: item.id,
                   name: item.name,
@@ -702,48 +738,51 @@
                 });
               });
             })
-            .catch(function(err) {
+            .catch(function (err) {
               alert("Error fetching from server. Check URL or connection.");
               log("Fetch error: " + err.message);
             })
-            .then(function() {
+            .then(function () {
               fetchBtn.disabled = false;
               fetchBtn.innerText = "Fetch from Server";
             });
         });
 
       document.getElementById("copyBtn").addEventListener("click", function () {
-        exportAllData().then(function(data) {
+        exportAllData().then(function (data) {
           if (!data || data.length === 0) {
             alert("No data to copy");
             return;
           }
           var text = JSON.stringify(data, null, 2);
           if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(text).then(function() {
+            navigator.clipboard
+              .writeText(text)
+              .then(function () {
                 alert("All entries copied to clipboard!");
-              }).catch(function(err) {
+              })
+              .catch(function (err) {
                 fallbackCopy(text);
               });
           } else {
-              fallbackCopy(text);
+            fallbackCopy(text);
           }
         });
       });
-      
+
       function fallbackCopy(text) {
-          var textarea = document.createElement("textarea");
-          textarea.value = text;
-          document.body.appendChild(textarea);
-          textarea.select();
-          try {
-              document.execCommand("copy");
-              alert("All entries copied to clipboard!");
-          } catch(e) {
-              log("Copy failed: " + e.message);
-              alert("Copy failed. See logs.");
-          }
-          document.body.removeChild(textarea);
+        var textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand("copy");
+          alert("All entries copied to clipboard!");
+        } catch (e) {
+          log("Copy failed: " + e.message);
+          alert("Copy failed. See logs.");
+        }
+        document.body.removeChild(textarea);
       }
 
       document.getElementById("testBtn").addEventListener("click", function () {
@@ -753,17 +792,17 @@
         log("Testing connection to " + getServerUrl() + "/...");
 
         fetch(getServerUrl() + "/", {
-          mode: "no-cors"
+          mode: "no-cors",
         })
-          .then(function() {
+          .then(function () {
             log("Server is reachable!");
             alert("Success! Your phone can talk to the server.");
           })
-          .catch(function(err) {
+          .catch(function (err) {
             log("Connection failed: " + err.message);
             alert("Failed! Cannot reach server.");
           })
-          .then(function() {
+          .then(function () {
             btn.disabled = false;
             btn.innerText = "Test Connection";
           });
@@ -780,7 +819,7 @@
       document
         .getElementById("exportJsonBtn")
         .addEventListener("click", function () {
-          exportAllData().then(function(data) {
+          exportAllData().then(function (data) {
             var blob = new Blob([JSON.stringify(data, null, 2)], {
               type: "application/json",
             });
@@ -795,16 +834,18 @@
       document
         .getElementById("exportCsvBtn")
         .addEventListener("click", function () {
-          exportAllData().then(function(data) {
+          exportAllData().then(function (data) {
             if (!data || data.length === 0) {
               alert("No data found");
               return;
             }
             var header =
-              FIELD_ORDER.map(function(k) { return '"' + FIELD_LABELS[k] + '"'; }).join(",") + "\n";
+              FIELD_ORDER.map(function (k) {
+                return '"' + FIELD_LABELS[k] + '"';
+              }).join(",") + "\n";
             var rows = data
-              .map(function(obj) {
-                return FIELD_ORDER.map(function(k) {
+              .map(function (obj) {
+                return FIELD_ORDER.map(function (k) {
                   return '"' + String(obj[k] || "").replace(/"/g, '""') + '"';
                 }).join(",");
               })
@@ -819,8 +860,11 @@
         });
 
       function exportAllData() {
-        return new Promise(function(resolve) {
-          if (!db) { resolve([]); return; }
+        return new Promise(function (resolve) {
+          if (!db) {
+            resolve([]);
+            return;
+          }
           var tx = db.transaction([DB_STORE], "readonly");
           var store = tx.objectStore(DB_STORE);
           var all = [];
@@ -839,9 +883,9 @@
         return node ? node.value : "";
       }
 
-      window.addEventListener("online", function() {
-          log("Connection restored. Syncing...");
-          syncToServer();
+      window.addEventListener("online", function () {
+        log("Connection restored. Syncing...");
+        syncToServer();
       });
 
       function syncToServer() {
@@ -871,7 +915,7 @@
             var cursor = e.target.result;
             if (cursor) {
               if (cursor.value.synced === 0 || cursor.value.synced === false) {
-                  sendEntry(cursor.value);
+                sendEntry(cursor.value);
               }
               cursor.continue();
             }
@@ -885,11 +929,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(entry),
         })
-          .then(function(res) {
+          .then(function (res) {
             if (res.ok) markSynced(entry.id);
             return res;
           })
-          .catch(function(err) {
+          .catch(function (err) {
             console.warn("Sync failed", err);
             throw err;
           });
@@ -913,21 +957,39 @@
         if (entry.remote) {
           badge = '<span class="sync-badge remote">Cloud</span>';
         } else {
-          badge = (entry.synced === 1 || entry.synced === true)
-            ? '<span class="sync-badge synced">Synced</span>'
-            : '<span class="sync-badge pending">Pending</span>';
+          badge =
+            entry.synced === 1 || entry.synced === true
+              ? '<span class="sync-badge synced">Synced</span>'
+              : '<span class="sync-badge pending">Pending</span>';
         }
 
         return (
           '<div class="entry">' +
           badge +
-          "<strong>" + entry.name + "</strong><br>" +
-          "<small>" + entry.number + " | " + entry.email + "</small><br>" +
+          "<strong>" +
+          entry.name +
+          "</strong><br>" +
+          "<small>" +
+          entry.number +
+          " | " +
+          entry.email +
+          "</small><br>" +
           '<div style="font-size: 13px; margin-top: 5px;">' +
-          "<b>Age:</b> " + entry.ageGroup + " | <b>Source:</b> " + entry.source + " | <b>Pin:</b> " + entry.pinCode +
+          "<b>Age:</b> " +
+          entry.ageGroup +
+          " | <b>Source:</b> " +
+          entry.source +
+          " | <b>Pin:</b> " +
+          entry.pinCode +
           "</div>" +
-          (entry.feedback ? '<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"' + entry.feedback + '"</div>' : "") +
-          '<div class="meta">' + new Date(entry.time).toLocaleString() + "</div>" +
+          (entry.feedback
+            ? '<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"' +
+              entry.feedback +
+              '"</div>'
+            : "") +
+          '<div class="meta">' +
+          new Date(entry.time).toLocaleString() +
+          "</div>" +
           "</div>"
         );
       }
