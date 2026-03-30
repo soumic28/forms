@@ -302,6 +302,9 @@
     </div>
 
     <script>
+      // ← Replace with your deployed backend URL when ready
+      const SERVER_URL = "https://your-backend-url.com/submit";
+
       let db;
       const DB_NAME = "OfflineFormDB";
       const DB_STORE = "entries";
@@ -328,15 +331,32 @@
         time: "Saved At",
       };
 
-      const request = indexedDB.open(DB_NAME, 1);
+      const request = indexedDB.open(DB_NAME, 2);
 
       request.onupgradeneeded = function (event) {
         db = event.target.result;
-        db.createObjectStore(DB_STORE, { keyPath: "id", autoIncrement: true });
+        const oldVersion = event.oldVersion;
+
+        let store;
+        if (oldVersion < 1) {
+          store = db.createObjectStore(DB_STORE, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+        } else {
+          store = event.target.transaction.objectStore(DB_STORE);
+        }
+
+        // Add synced index if upgrading from v1 or creating fresh
+        if (!store.indexNames.contains("synced")) {
+          store.createIndex("synced", "synced", { unique: false });
+        }
       };
 
       request.onsuccess = function (event) {
         db = event.target.result;
+        // Auto-sync on load if already online
+        if (navigator.onLine) syncToServer();
       };
 
       document
@@ -353,6 +373,7 @@
             pinCode: document.getElementById("pinCode").value.trim(),
             feedback: document.getElementById("feedback").value.trim(),
             time: new Date().toISOString(),
+            synced: false,
           };
 
           const tx = db.transaction([DB_STORE], "readwrite");
@@ -444,6 +465,52 @@
       function getCheckedValue(name) {
         const node = document.querySelector(`input[name="${name}"]:checked`);
         return node ? node.value : "";
+      }
+
+      // Fires automatically when the device regains internet
+      window.addEventListener("online", syncToServer);
+
+      function syncToServer() {
+        const tx = db.transaction([DB_STORE], "readonly");
+        const index = tx.objectStore(DB_STORE).index("synced");
+        const pending = [];
+
+        index.openCursor(IDBKeyRange.only(false)).onsuccess = function (e) {
+          const cursor = e.target.result;
+          if (cursor) {
+            pending.push(cursor.value);
+            cursor.continue();
+          } else {
+            pending.forEach(sendEntry);
+          }
+        };
+      }
+
+      function sendEntry(entry) {
+        fetch(SERVER_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry),
+        })
+          .then((res) => {
+            if (res.ok) markSynced(entry.id);
+          })
+          .catch(() => {
+            // Silently ignore — will retry next time online
+          });
+      }
+
+      function markSynced(id) {
+        const tx = db.transaction([DB_STORE], "readwrite");
+        const store = tx.objectStore(DB_STORE);
+        const req = store.get(id);
+        req.onsuccess = function () {
+          const record = req.result;
+          if (record) {
+            record.synced = true;
+            store.put(record);
+          }
+        };
       }
 
       function renderEntry(entry) {
