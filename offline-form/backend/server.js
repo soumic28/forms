@@ -14,6 +14,10 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("Your backend is running!");
+});
+
 // Create table on startup if it doesn't exist
 async function initDB() {
   await pool.query(`
