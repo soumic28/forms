@@ -470,12 +470,21 @@
       };
 
       // Load saved server URL
-      var savedUrl = localStorage.getItem("offline_form_server_url");
+      var savedUrl = (function() {
+        try {
+          return localStorage.getItem("offline_form_server_url");
+        } catch(e) {
+          console.warn("localStorage blocked");
+          return null;
+        }
+      })();
       if (savedUrl) document.getElementById("serverUrl").value = savedUrl;
 
       function getServerUrl() {
         var url = document.getElementById("serverUrl").value.trim();
-        localStorage.setItem("offline_form_server_url", url);
+        try {
+          localStorage.setItem("offline_form_server_url", url);
+        } catch(e) {}
         return url.lastIndexOf("/") === url.length - 1 ? url.slice(0, -1) : url;
       }
 
@@ -483,48 +492,95 @@
         var panel = document.getElementById("debugPanel");
         var content = document.getElementById("debugContent");
         var time = new Date().toLocaleTimeString();
-        content.innerHTML = "[" + time + "] " + msg + "<br>" + content.innerHTML;
+        var style = type === "err" ? "color:#ff5555" : (type === "warn" ? "color:#ffcc00" : "");
+        content.innerHTML = '<span style="' + style + '">[' + time + "] " + msg + "</span><br>" + content.innerHTML;
         console.log("[FORM DEBUG] " + msg);
+      }
+
+      // INITIALIZE DATABASE
+      log("Initializing Database...");
+      log("Protocol: " + window.location.protocol);
+      if (window.location.protocol.indexOf("content") !== -1) {
+        log("Warning: Opened via 'content://' URI. This may block IndexedDB on Android Chrome.", "warn");
+      }
+
+      if (!window.indexedDB) {
+        log("CRITICAL: IndexedDB NOT supported by this browser!", "err");
+        alert("Your browser does not support offline saving. Please use Chrome or Safari.");
       }
 
       var request = indexedDB.open(DB_NAME, 2);
 
+      request.onblocked = function() {
+        log("DB Blocked: Please close other tabs of this page!", "warn");
+        alert("Database is blocked. Please close other open tabs of this form.");
+      };
+
       request.onerror = function (event) {
-        log("IndexedDB failed: " + event.target.error, "err");
-        alert(
-          "CRITICAL: Local database is blocked. If you are on iPhone/Android, try opening this file in Chrome instead of the default 'Files' app viewer.",
-        );
+        var err = event.target.error ? event.target.error.name : "Unknown Error";
+        log("IndexedDB Opening Error: " + err, "err");
+        
+        if (err === "SecurityError") {
+          alert("CRITICAL: Privacy settings or 'Incognito' mode are blocking the database. Please open in a normal tab.");
+        } else {
+          alert("Database Error: " + err + ". If on mobile, don't open from WhatsApp; save to 'Downloads' and open in Chrome directly.");
+        }
       };
 
       request.onupgradeneeded = function (event) {
-        log("Database upgrade/init started...");
+        log("Database upgrade/init started (v" + event.oldVersion + " -> v2)...");
         db = event.target.result;
         var oldVersion = event.oldVersion;
         var store;
-        if (oldVersion < 1) {
-          store = db.createObjectStore(DB_STORE, {
-            keyPath: "id",
-            autoIncrement: true,
-          });
-        } else {
-          store = event.target.transaction.objectStore(DB_STORE);
-        }
-        if (!store.indexNames.contains("synced")) {
-          store.createIndex("synced", "synced", { unique: false });
+        
+        try {
+          if (oldVersion < 1) {
+            store = db.createObjectStore(DB_STORE, {
+              keyPath: "id",
+              autoIncrement: true,
+            });
+            log("Object store 'entries' created.");
+          } else {
+            store = event.target.transaction.objectStore(DB_STORE);
+            log("Existing object store found.");
+          }
+          
+          if (!store.indexNames.contains("synced")) {
+            store.createIndex("synced", "synced", { unique: false });
+            log("Index 'synced' created.");
+          }
+        } catch (e) {
+          log("Upgrade failed: " + e.message, "err");
         }
       };
 
       request.onsuccess = function (event) {
         db = event.target.result;
         log("Database ready!");
-        if (navigator.onLine) syncToServer();
+        
+        db.onversionchange = function() {
+          db.close();
+          log("Database version changed elsewhere. Closing this connection.", "warn");
+        };
+
+        if (navigator.onLine) {
+          log("System online, checking for pending syncs...");
+          syncToServer();
+        }
       };
 
       document
         .getElementById("myForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
-          if (!db) { alert("Database not ready yet. Please wait a second."); return; }
+          if (!db) { 
+            var msg = (window.location.protocol.indexOf("content") !== -1)
+              ? "Database not ready. YOU ARE OPENING THIS WRONG. Please save the file to your phone first, then open it directly in Chrome."
+              : "Database not ready yet. If this persists, your browser may be blocking local storage (Privacy/Incognito mode).";
+            alert(msg); 
+            log("Submit denied: db is null", "err");
+            return; 
+          }
           
           var btn = document.getElementById("submitBtn");
           var btnText = btn.querySelector("span");
