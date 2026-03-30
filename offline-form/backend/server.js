@@ -18,24 +18,45 @@ app.get("/", (req, res) => {
   res.send("Your backend is running!");
 });
 
-// Create table on startup if it doesn't exist
-async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS form_entries (
-      id          SERIAL PRIMARY KEY,
-      name        TEXT,
-      number      TEXT,
-      email       TEXT,
-      age_group   TEXT,
-      source      TEXT,
-      pin_code    TEXT,
-      feedback    TEXT,
-      submitted_at TIMESTAMPTZ,
-      created_at  TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  console.log("DB ready — form_entries table exists");
+// Helper to ensure DB is ready
+let dbInitialized = false;
+async function ensureDB() {
+  if (dbInitialized) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS form_entries (
+        id          SERIAL PRIMARY KEY,
+        name        TEXT,
+        number      TEXT,
+        email       TEXT,
+        age_group   TEXT,
+        source      TEXT,
+        pin_code    TEXT,
+        feedback    TEXT,
+        submitted_at TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    dbInitialized = true;
+    console.log("DB ready");
+  } catch (err) {
+    console.error("DB init error:", err.message);
+    throw err;
+  }
 }
+
+app.get("/entries", async (req, res) => {
+  try {
+    await ensureDB();
+    const result = await pool.query(
+      "SELECT * FROM form_entries ORDER BY created_at DESC LIMIT 100"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("DB fetch error:", err.message);
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
 app.post("/submit", async (req, res) => {
   const { name, number, email, ageGroup, source, pinCode, feedback, time } =
@@ -46,7 +67,7 @@ app.post("/submit", async (req, res) => {
   }
 
   try {
-    await initDB();
+    await ensureDB();
     await pool.query(
       `INSERT INTO form_entries
          (name, number, email, age_group, source, pin_code, feedback, submitted_at)
@@ -60,7 +81,10 @@ app.post("/submit", async (req, res) => {
   }
 });
 
-// Local dev only — Vercel manages its own listener
+// Local dev only
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
+
+// Export for Vercel
+module.exports = app;

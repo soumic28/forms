@@ -10,13 +10,15 @@
         --accent: #f1edff;
         --border: #dcdcdc;
         --text: #202124;
+        --success: #0f9d58;
+        --pending: #f4b400;
       }
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Arial, sans-serif;
         background: #f5f5f5;
         color: var(--text);
         line-height: 1.5;
@@ -36,7 +38,7 @@
       }
       .form-header {
         border-top: 8px solid var(--purple);
-        padding: 20px;
+        padding: 24px 20px;
       }
       .form-header h1 {
         margin: 0 0 4px;
@@ -47,6 +49,22 @@
         color: #5f6368;
         font-size: 14px;
       }
+      .server-settings {
+        background: #eee;
+        padding: 10px 20px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      .server-settings input {
+        flex: 1;
+        font-size: 12px;
+        padding: 4px 8px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
       form {
         padding: 0 20px 20px;
         display: flex;
@@ -55,7 +73,7 @@
       }
       .question {
         border-top: 1px solid var(--border);
-        padding: 18px 0;
+        padding: 20px 0;
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -63,50 +81,91 @@
       .question:first-of-type {
         border-top: none;
       }
+      .q-label {
+        font-weight: 500;
+        margin: 0;
+      }
       input[type="text"],
       input[type="tel"],
       input[type="email"],
       textarea {
         width: 100%;
-        padding: 10px 12px;
+        padding: 12px;
         border: 1px solid var(--border);
         border-radius: 4px;
         font-size: 14px;
+        transition: border-color 0.2s;
+      }
+      input:focus, textarea:focus {
+        outline: none;
+        border-color: var(--purple);
       }
       .options label {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        padding: 10px 12px;
+        padding: 12px;
         border: 1px solid var(--border);
         border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .options label:hover {
         background: var(--accent);
       }
       .options {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
         gap: 8px;
       }
       button.primary {
         background: var(--purple);
         color: #fff;
-        border: 1px solid var(--purple);
-        padding: 12px;
+        border: none;
+        padding: 14px;
         font-size: 16px;
+        font-weight: 600;
         border-radius: 6px;
         margin-top: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+      }
+      button.primary:disabled {
+        background: #ccc;
+        cursor: not-allowed;
       }
       #entries .entry {
         background: #fff;
         border: 1px solid var(--border);
         border-radius: 6px;
-        padding: 14px 16px;
-        margin-bottom: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        position: relative;
       }
+      .sync-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+      .sync-badge.synced { background: #e6f4ea; color: var(--success); }
+      .sync-badge.pending { background: #fef7e0; color: var(--pending); }
+      .sync-badge.remote { background: #e8f0fe; color: #1a73e8; }
+      
       #entries .meta {
         color: #5f6368;
         font-size: 12px;
-        margin-top: 6px;
+        margin-top: 8px;
+        border-top: 1px solid #f0f0f0;
+        padding-top: 8px;
       }
       .buttons {
         margin-top: 20px;
@@ -114,21 +173,47 @@
         gap: 10px;
         flex-wrap: wrap;
       }
+      button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: #fff;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover { background: #f8f8f8; }
+      .loader {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-bottom-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: rotation 1s linear infinite;
+      }
+      @keyframes rotation {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
     </style>
   </head>
 
   <body>
     <div class="page">
       <div class="form-card">
+        <div class="server-settings">
+          <label>Server URL:</label>
+          <input type="text" id="serverUrl" value="https://forms-five-hazel.vercel.app" placeholder="e.g. http://192.168.1.10:3000" />
+        </div>
         <div class="form-header">
-          <h1>Patna kitab utsav</h1>
-          <p class="sub">April 03-07, 2026</p>
+          <h1>Bareilly Kitab Utsav</h1>
+          <p class="sub">April 03-07, 2026 | Offline Entry Form</p>
         </div>
 
         <form id="myForm">
           <!-- NAME -->
           <div class="question">
-            <label for="name">Name</label>
+            <label class="q-label" for="name">Name</label>
             <input type="text" id="name" required />
           </div>
 
@@ -288,12 +373,16 @@
             <textarea id="feedback"></textarea>
           </div>
 
-          <button class="primary" type="submit">Save Offline</button>
+          <button class="primary" type="submit" id="submitBtn">
+            <span>Save Offline</span>
+          </button>
         </form>
       </div>
 
       <div class="buttons">
-        <button id="showBtn">Show All Entries</button>
+        <button id="showBtn">Show Local Entries</button>
+        <button id="fetchBtn" style="background: var(--accent); border-color: var(--purple);">Fetch from Server</button>
+        <button id="copyBtn">Copy All Data</button>
         <button id="exportJsonBtn">Export JSON</button>
         <button id="exportCsvBtn">Export CSV</button>
       </div>
@@ -302,22 +391,12 @@
     </div>
 
     <script>
-      // ← Replace with your deployed backend URL when ready
-      const SERVER_URL = "https://forms-five-hazel.vercel.app/submit";
-
       let db;
       const DB_NAME = "OfflineFormDB";
       const DB_STORE = "entries";
 
       const FIELD_ORDER = [
-        "name",
-        "number",
-        "email",
-        "ageGroup",
-        "source",
-        "pinCode",
-        "feedback",
-        "time",
+        "name", "number", "email", "ageGroup", "source", "pinCode", "feedback", "time"
       ];
 
       const FIELD_LABELS = {
@@ -328,26 +407,30 @@
         source: "Source",
         pinCode: "Pin Code",
         feedback: "Feedback",
-        time: "Saved At",
+        time: "Time",
       };
+
+      // Load saved server URL
+      const savedUrl = localStorage.getItem("offline_form_server_url");
+      if (savedUrl) document.getElementById("serverUrl").value = savedUrl;
+
+      function getServerUrl() {
+        const url = document.getElementById("serverUrl").value.trim();
+        localStorage.setItem("offline_form_server_url", url);
+        return url.endsWith("/") ? url.slice(0, -1) : url;
+      }
 
       const request = indexedDB.open(DB_NAME, 2);
 
       request.onupgradeneeded = function (event) {
         db = event.target.result;
         const oldVersion = event.oldVersion;
-
         let store;
         if (oldVersion < 1) {
-          store = db.createObjectStore(DB_STORE, {
-            keyPath: "id",
-            autoIncrement: true,
-          });
+          store = db.createObjectStore(DB_STORE, { keyPath: "id", autoIncrement: true });
         } else {
           store = event.target.transaction.objectStore(DB_STORE);
         }
-
-        // Add synced index if upgrading from v1 or creating fresh
         if (!store.indexNames.contains("synced")) {
           store.createIndex("synced", "synced", { unique: false });
         }
@@ -355,59 +438,130 @@
 
       request.onsuccess = function (event) {
         db = event.target.result;
-        // Auto-sync on load if already online
         if (navigator.onLine) syncToServer();
       };
 
-      document
-        .getElementById("myForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
+      document.getElementById("myForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const btn = document.getElementById("submitBtn");
+        const btnText = btn.querySelector('span');
+        
+        // Show loading state
+        btn.disabled = true;
+        btnText.innerHTML = 'Saving... <div class="loader"></div>';
 
-          const entry = {
-            name: document.getElementById("name").value.trim(),
-            number: document.getElementById("number").value.trim(),
-            email: document.getElementById("email").value.trim(),
-            ageGroup: getCheckedValue("ageGroup"),
-            source: getCheckedValue("source"),
-            pinCode: document.getElementById("pinCode").value.trim(),
-            feedback: document.getElementById("feedback").value.trim(),
-            time: new Date().toISOString(),
-            synced: false,
-          };
+        const entry = {
+          name: document.getElementById("name").value.trim(),
+          number: document.getElementById("number").value.trim(),
+          email: document.getElementById("email").value.trim(),
+          ageGroup: getCheckedValue("ageGroup"),
+          source: getCheckedValue("source"),
+          pinCode: document.getElementById("pinCode").value.trim(),
+          feedback: document.getElementById("feedback").value.trim(),
+          time: new Date().toISOString(),
+          synced: false,
+        };
 
-          const tx = db.transaction([DB_STORE], "readwrite");
-          tx.objectStore(DB_STORE).add(entry);
+        const tx = db.transaction([DB_STORE], "readwrite");
+        const addReq = tx.objectStore(DB_STORE).add(entry);
 
-          tx.oncomplete = () => {
-            alert("Saved Offline Successfully!");
-            document.getElementById("myForm").reset();
-          };
-        });
+        addReq.onsuccess = (e) => {
+          const id = e.target.result;
+          entry.id = id;
+          
+          // Reset Form
+          document.getElementById("myForm").reset();
+          
+          // Proactive Sync
+          if (navigator.onLine) {
+            sendEntry(entry).finally(() => {
+                finishSubmit();
+            });
+          } else {
+            alert("Saved Offline! Will sync when online.");
+            finishSubmit();
+          }
+        };
+        
+        function finishSubmit() {
+            btn.disabled = false;
+            btnText.innerHTML = 'Save Offline';
+            showLocalEntries();
+        }
+      });
 
-      document.getElementById("showBtn").addEventListener("click", function () {
+      document.getElementById("showBtn").addEventListener("click", showLocalEntries);
+
+      function showLocalEntries() {
         const entriesDiv = document.getElementById("entries");
-        entriesDiv.innerHTML = "";
+        entriesDiv.innerHTML = "<h3>Local Entries (This Device)</h3>";
 
         const tx = db.transaction([DB_STORE], "readonly");
         const store = tx.objectStore(DB_STORE);
 
-        store.openCursor().onsuccess = function (event) {
+        store.openCursor(null, 'prev').onsuccess = function (event) {
           const cursor = event.target.result;
           if (cursor) {
             entriesDiv.innerHTML += renderEntry(cursor.value);
             cursor.continue();
           }
         };
+      }
+
+      document.getElementById("fetchBtn").addEventListener("click", function() {
+        const entriesDiv = document.getElementById("entries");
+        const fetchBtn = document.getElementById("fetchBtn");
+        fetchBtn.disabled = true;
+        fetchBtn.innerText = "Fetching...";
+        
+        fetch(`${getServerUrl()}/entries`)
+          .then(res => res.json())
+          .then(data => {
+            entriesDiv.innerHTML = `<h3>Server Entries (Global)</h3>`;
+            if (data.length === 0) entriesDiv.innerHTML += "<p>No entries found on server.</p>";
+            data.forEach(item => {
+                entriesDiv.innerHTML += renderEntry({
+                    ...item,
+                    ageGroup: item.age_group,
+                    pinCode: item.pin_code,
+                    time: item.submitted_at || item.created_at,
+                    remote: true
+                });
+            });
+          })
+          .catch(err => {
+            alert("Error fetching from server. Check URL or connection.");
+            console.error(err);
+          })
+          .finally(() => {
+            fetchBtn.disabled = false;
+            fetchBtn.innerText = "Fetch from Server";
+          });
       });
 
-      document
-        .getElementById("exportJsonBtn")
-        .addEventListener("click", function () {
+      document.getElementById("copyBtn").addEventListener("click", function () {
+        exportAllData().then((data) => {
+          if (data.length === 0) { alert("No data to copy"); return; }
+          const text = JSON.stringify(data, null, 2);
+          navigator.clipboard.writeText(text).then(() => {
+            alert("All entries copied to clipboard!");
+          }).catch(err => {
+            console.error("Clipboard error", err);
+            // Fallback for some mobile browsers
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            alert("All entries copied to clipboard!");
+          });
+        });
+      });
+
+      document.getElementById("exportJsonBtn").addEventListener("click", function () {
           exportAllData().then((data) => {
-            const blob = new Blob([JSON.stringify(data, null, 2)], {
-              type: "application/json",
-            });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -416,29 +570,15 @@
           });
         });
 
-      document
-        .getElementById("exportCsvBtn")
-        .addEventListener("click", function () {
+      document.getElementById("exportCsvBtn").addEventListener("click", function () {
           exportAllData().then((data) => {
-            if (data.length === 0) {
-              alert("No data found");
-              return;
-            }
-
-            const header =
-              FIELD_ORDER.map((k) => `"${FIELD_LABELS[k]}"`).join(",") + "\n";
-
-            const rows = data
-              .map((obj) =>
-                FIELD_ORDER.map(
-                  (k) => `"${String(obj[k] || "").replace(/"/g, '""')}"`,
-                ).join(","),
-              )
-              .join("\n");
-
+            if (data.length === 0) { alert("No data found"); return; }
+            const header = FIELD_ORDER.map((k) => `"${FIELD_LABELS[k]}"`).join(",") + "\n";
+            const rows = data.map((obj) =>
+                FIELD_ORDER.map((k) => `"${String(obj[k] || "").replace(/"/g, '""')}"`).join(",")
+              ).join("\n");
             const blob = new Blob([header + rows], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
-
             const a = document.createElement("a");
             a.href = url;
             a.download = "offline-data.csv";
@@ -451,13 +591,10 @@
           const tx = db.transaction([DB_STORE], "readonly");
           const store = tx.objectStore(DB_STORE);
           const all = [];
-
           store.openCursor().onsuccess = function (e) {
             const cursor = e.target.result;
-            if (cursor) {
-              all.push(cursor.value);
-              cursor.continue();
-            } else resolve(all);
+            if (cursor) { all.push(cursor.value); cursor.continue(); } 
+            else resolve(all);
           };
         });
       }
@@ -467,7 +604,6 @@
         return node ? node.value : "";
       }
 
-      // Fires automatically when the device regains internet
       window.addEventListener("online", syncToServer);
 
       function syncToServer() {
@@ -487,16 +623,18 @@
       }
 
       function sendEntry(entry) {
-        fetch(SERVER_URL, {
+        return fetch(`${getServerUrl()}/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(entry),
         })
           .then((res) => {
             if (res.ok) markSynced(entry.id);
+            return res;
           })
-          .catch(() => {
-            // Silently ignore — will retry next time online
+          .catch((err) => {
+             console.warn("Sync failed", err);
+             throw err;
           });
       }
 
@@ -514,15 +652,24 @@
       }
 
       function renderEntry(entry) {
+        let badge = '';
+        if (entry.remote) {
+            badge = '<span class="sync-badge remote">Cloud</span>';
+        } else {
+            badge = entry.synced 
+                ? '<span class="sync-badge synced">Synced</span>' 
+                : '<span class="sync-badge pending">Pending</span>';
+        }
+
         return `
         <div class="entry">
+          ${badge}
           <strong>${entry.name}</strong><br>
-          ${FIELD_LABELS.number}: ${entry.number}<br>
-          ${FIELD_LABELS.email}: ${entry.email}<br>
-          ${FIELD_LABELS.ageGroup}: ${entry.ageGroup}<br>
-          ${FIELD_LABELS.source}: ${entry.source}<br>
-          ${FIELD_LABELS.pinCode}: ${entry.pinCode}<br>
-          ${FIELD_LABELS.feedback}: ${entry.feedback}<br>
+          <small>${entry.number} | ${entry.email}</small><br>
+          <div style="font-size: 13px; margin-top: 5px;">
+            <b>Age:</b> ${entry.ageGroup} | <b>Source:</b> ${entry.source} | <b>Pin:</b> ${entry.pinCode}
+          </div>
+          ${entry.feedback ? `<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"${entry.feedback}"</div>` : ''}
           <div class="meta">${new Date(entry.time).toLocaleString()}</div>
         </div>`;
       }
