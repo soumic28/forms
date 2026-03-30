@@ -435,11 +435,19 @@
     </div>
 
     <script>
-      let db;
-      const DB_NAME = "OfflineFormDB";
-      const DB_STORE = "entries";
+      // GLOBAL ERROR CATCHER FOR MOBILE
+      window.onerror = function(msg, url, line, col, error) {
+        var errMsg = "JS ERROR: " + msg + "\nLine: " + line;
+        alert(errMsg);
+        if (typeof log === 'function') log(errMsg, "err");
+        return false;
+      };
 
-      const FIELD_ORDER = [
+      var db;
+      var DB_NAME = "OfflineFormDB";
+      var DB_STORE = "entries";
+
+      var FIELD_ORDER = [
         "name",
         "number",
         "email",
@@ -450,7 +458,7 @@
         "time",
       ];
 
-      const FIELD_LABELS = {
+      var FIELD_LABELS = {
         name: "Name",
         number: "Phone Number",
         email: "Email",
@@ -462,37 +470,37 @@
       };
 
       // Load saved server URL
-      const savedUrl = localStorage.getItem("offline_form_server_url");
+      var savedUrl = localStorage.getItem("offline_form_server_url");
       if (savedUrl) document.getElementById("serverUrl").value = savedUrl;
 
       function getServerUrl() {
-        const url = document.getElementById("serverUrl").value.trim();
+        var url = document.getElementById("serverUrl").value.trim();
         localStorage.setItem("offline_form_server_url", url);
-        return url.endsWith("/") ? url.slice(0, -1) : url;
+        return url.lastIndexOf("/") === url.length - 1 ? url.slice(0, -1) : url;
       }
 
-      function log(msg, type = "info") {
-        const panel = document.getElementById("debugPanel");
-        const content = document.getElementById("debugContent");
-        const time = new Date().toLocaleTimeString();
-        content.innerHTML = `[${time}] ${msg}<br>` + content.innerHTML;
-        console.log(`[FORM DEBUG] ${msg}`);
+      function log(msg, type) {
+        var panel = document.getElementById("debugPanel");
+        var content = document.getElementById("debugContent");
+        var time = new Date().toLocaleTimeString();
+        content.innerHTML = "[" + time + "] " + msg + "<br>" + content.innerHTML;
+        console.log("[FORM DEBUG] " + msg);
       }
 
-      const request = indexedDB.open(DB_NAME, 2);
+      var request = indexedDB.open(DB_NAME, 2);
 
       request.onerror = function (event) {
         log("IndexedDB failed: " + event.target.error, "err");
         alert(
-          "CRITICAL: Local database is blocked. If you are on iPhone, try opening this file in Chrome instead of Safari, or disable 'Incognito' mode.",
+          "CRITICAL: Local database is blocked. If you are on iPhone/Android, try opening this file in Chrome instead of the default 'Files' app viewer.",
         );
       };
 
       request.onupgradeneeded = function (event) {
         log("Database upgrade/init started...");
         db = event.target.result;
-        const oldVersion = event.oldVersion;
-        let store;
+        var oldVersion = event.oldVersion;
+        var store;
         if (oldVersion < 1) {
           store = db.createObjectStore(DB_STORE, {
             keyPath: "id",
@@ -508,6 +516,7 @@
 
       request.onsuccess = function (event) {
         db = event.target.result;
+        log("Database ready!");
         if (navigator.onLine) syncToServer();
       };
 
@@ -515,14 +524,16 @@
         .getElementById("myForm")
         .addEventListener("submit", function (e) {
           e.preventDefault();
-          const btn = document.getElementById("submitBtn");
-          const btnText = btn.querySelector("span");
+          if (!db) { alert("Database not ready yet. Please wait a second."); return; }
+          
+          var btn = document.getElementById("submitBtn");
+          var btnText = btn.querySelector("span");
 
           // Show loading state
           btn.disabled = true;
           btnText.innerHTML = 'Saving... <div class="loader"></div>';
 
-          const entry = {
+          var entry = {
             name: document.getElementById("name").value.trim(),
             number: document.getElementById("number").value.trim(),
             email: document.getElementById("email").value.trim(),
@@ -534,19 +545,19 @@
             synced: false,
           };
 
-          const tx = db.transaction([DB_STORE], "readwrite");
-          const store = tx.objectStore(DB_STORE);
+          var tx = db.transaction([DB_STORE], "readwrite");
+          var store = tx.objectStore(DB_STORE);
 
-          tx.onerror = (e) => {
+          tx.onerror = function(e) {
             log("Transaction Error: " + e.target.error);
             alert("Storage full or blocked!");
             finishSubmit();
           };
 
-          const addReq = store.add(entry);
+          var addReq = store.add(entry);
 
-          addReq.onsuccess = (e) => {
-            const id = e.target.result;
+          addReq.onsuccess = function(e) {
+            var id = e.target.result;
             entry.id = id;
             log("Saved locally to ID: " + id);
 
@@ -557,23 +568,22 @@
             if (navigator.onLine) {
               log("Online detected. Syncing...");
               sendEntry(entry)
-                .then(() => {
+                .then(function() {
                   log("Sync successful!");
+                  finishSubmit();
                 })
-                .catch((err) => {
-                  log("Immediate sync failed (expected if offline or CORS)");
-                })
-                .finally(() => {
+                .catch(function(err) {
+                  log("Sync failed: " + err.message);
                   finishSubmit();
                 });
             } else {
               log("Offline mode. Stored locally.");
-              alert("Saved Offline! Will sync when online.");
+              alert("Saved Offline!");
               finishSubmit();
             }
           };
 
-          addReq.onerror = (e) => {
+          addReq.onerror = function(e) {
             log("Add Request Error: " + e.target.error);
             alert("Could not save. Check browser settings.");
             finishSubmit();
@@ -591,14 +601,15 @@
         .addEventListener("click", showLocalEntries);
 
       function showLocalEntries() {
-        const entriesDiv = document.getElementById("entries");
+        if (!db) return;
+        var entriesDiv = document.getElementById("entries");
         entriesDiv.innerHTML = "<h3>Local Entries (This Device)</h3>";
 
-        const tx = db.transaction([DB_STORE], "readonly");
-        const store = tx.objectStore(DB_STORE);
+        var tx = db.transaction([DB_STORE], "readonly");
+        var store = tx.objectStore(DB_STORE);
 
         store.openCursor(null, "prev").onsuccess = function (event) {
-          const cursor = event.target.result;
+          var cursor = event.target.result;
           if (cursor) {
             entriesDiv.innerHTML += renderEntry(cursor.value);
             cursor.continue();
@@ -609,88 +620,94 @@
       document
         .getElementById("fetchBtn")
         .addEventListener("click", function () {
-          const entriesDiv = document.getElementById("entries");
-          const fetchBtn = document.getElementById("fetchBtn");
+          var entriesDiv = document.getElementById("entries");
+          var fetchBtn = document.getElementById("fetchBtn");
           fetchBtn.disabled = true;
           fetchBtn.innerText = "Fetching...";
 
-          fetch(`${getServerUrl()}/entries`)
-            .then((res) => res.json())
-            .then((data) => {
-              entriesDiv.innerHTML = `<h3>Server Entries (Global)</h3>`;
-              if (data.length === 0)
+          fetch(getServerUrl() + "/entries")
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              entriesDiv.innerHTML = "<h3>Server Entries (Global)</h3>";
+              if (!data || data.length === 0)
                 entriesDiv.innerHTML += "<p>No entries found on server.</p>";
-              data.forEach((item) => {
+              data.forEach(function(item) {
                 entriesDiv.innerHTML += renderEntry({
-                  ...item,
+                  id: item.id,
+                  name: item.name,
+                  number: item.number,
+                  email: item.email,
                   ageGroup: item.age_group,
+                  source: item.source,
                   pinCode: item.pin_code,
+                  feedback: item.feedback,
                   time: item.submitted_at || item.created_at,
                   remote: true,
                 });
               });
             })
-            .catch((err) => {
+            .catch(function(err) {
               alert("Error fetching from server. Check URL or connection.");
-              console.error(err);
+              log("Fetch error: " + err.message);
             })
-            .finally(() => {
+            .then(function() {
               fetchBtn.disabled = false;
               fetchBtn.innerText = "Fetch from Server";
             });
         });
 
       document.getElementById("copyBtn").addEventListener("click", function () {
-        exportAllData().then((data) => {
-          if (data.length === 0) {
+        exportAllData().then(function(data) {
+          if (!data || data.length === 0) {
             alert("No data to copy");
             return;
           }
-          const text = JSON.stringify(data, null, 2);
-          navigator.clipboard
-            .writeText(text)
-            .then(() => {
-              alert("All entries copied to clipboard!");
-            })
-            .catch((err) => {
-              console.error("Clipboard error", err);
-              // Fallback for some mobile browsers
-              const textarea = document.createElement("textarea");
-              textarea.value = text;
-              document.body.appendChild(textarea);
-              textarea.select();
-              document.execCommand("copy");
-              document.body.removeChild(textarea);
-              alert("All entries copied to clipboard!");
-            });
+          var text = JSON.stringify(data, null, 2);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(function() {
+                alert("All entries copied to clipboard!");
+              }).catch(function(err) {
+                fallbackCopy(text);
+              });
+          } else {
+              fallbackCopy(text);
+          }
         });
       });
+      
+      function fallbackCopy(text) {
+          var textarea = document.createElement("textarea");
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+              document.execCommand("copy");
+              alert("All entries copied to clipboard!");
+          } catch(e) {
+              log("Copy failed: " + e.message);
+              alert("Copy failed. See logs.");
+          }
+          document.body.removeChild(textarea);
+      }
 
       document.getElementById("testBtn").addEventListener("click", function () {
-        const btn = document.getElementById("testBtn");
+        var btn = document.getElementById("testBtn");
         btn.disabled = true;
         btn.innerText = "Testing...";
         log("Testing connection to " + getServerUrl() + "/...");
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
         fetch(getServerUrl() + "/", {
-          mode: "no-cors",
-          signal: controller.signal,
+          mode: "no-cors"
         })
-          .then(() => {
+          .then(function() {
             log("Server is reachable!");
             alert("Success! Your phone can talk to the server.");
           })
-          .catch((err) => {
+          .catch(function(err) {
             log("Connection failed: " + err.message);
-            alert(
-              "Failed! Cannot reach server. Check URL, IP, or if Server is running.",
-            );
+            alert("Failed! Cannot reach server.");
           })
-          .finally(() => {
-            clearTimeout(timeoutId);
+          .then(function() {
             btn.disabled = false;
             btn.innerText = "Test Connection";
           });
@@ -699,7 +716,7 @@
       document
         .getElementById("debugBtn")
         .addEventListener("click", function () {
-          const panel = document.getElementById("debugPanel");
+          var panel = document.getElementById("debugPanel");
           panel.style.display =
             panel.style.display === "block" ? "none" : "block";
         });
@@ -707,12 +724,12 @@
       document
         .getElementById("exportJsonBtn")
         .addEventListener("click", function () {
-          exportAllData().then((data) => {
-            const blob = new Blob([JSON.stringify(data, null, 2)], {
+          exportAllData().then(function(data) {
+            var blob = new Blob([JSON.stringify(data, null, 2)], {
               type: "application/json",
             });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
             a.href = url;
             a.download = "offline-data.json";
             a.click();
@@ -722,23 +739,23 @@
       document
         .getElementById("exportCsvBtn")
         .addEventListener("click", function () {
-          exportAllData().then((data) => {
-            if (data.length === 0) {
+          exportAllData().then(function(data) {
+            if (!data || data.length === 0) {
               alert("No data found");
               return;
             }
-            const header =
-              FIELD_ORDER.map((k) => `"${FIELD_LABELS[k]}"`).join(",") + "\n";
-            const rows = data
-              .map((obj) =>
-                FIELD_ORDER.map(
-                  (k) => `"${String(obj[k] || "").replace(/"/g, '""')}"`,
-                ).join(","),
-              )
+            var header =
+              FIELD_ORDER.map(function(k) { return '"' + FIELD_LABELS[k] + '"'; }).join(",") + "\n";
+            var rows = data
+              .map(function(obj) {
+                return FIELD_ORDER.map(function(k) {
+                  return '"' + String(obj[k] || "").replace(/"/g, '""') + '"';
+                }).join(",");
+              })
               .join("\n");
-            const blob = new Blob([header + rows], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            var blob = new Blob([header + rows], { type: "text/csv" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
             a.href = url;
             a.download = "offline-data.csv";
             a.click();
@@ -746,12 +763,13 @@
         });
 
       function exportAllData() {
-        return new Promise((resolve) => {
-          const tx = db.transaction([DB_STORE], "readonly");
-          const store = tx.objectStore(DB_STORE);
-          const all = [];
+        return new Promise(function(resolve) {
+          if (!db) { resolve([]); return; }
+          var tx = db.transaction([DB_STORE], "readonly");
+          var store = tx.objectStore(DB_STORE);
+          var all = [];
           store.openCursor().onsuccess = function (e) {
-            const cursor = e.target.result;
+            var cursor = e.target.result;
             if (cursor) {
               all.push(cursor.value);
               cursor.continue();
@@ -761,50 +779,57 @@
       }
 
       function getCheckedValue(name) {
-        const node = document.querySelector(`input[name="${name}"]:checked`);
+        var node = document.querySelector('input[name="' + name + '"]:checked');
         return node ? node.value : "";
       }
 
-      window.addEventListener("online", syncToServer);
+      window.addEventListener("online", function() {
+          log("Connection restored. Syncing...");
+          syncToServer();
+      });
 
       function syncToServer() {
-        const tx = db.transaction([DB_STORE], "readonly");
-        const index = tx.objectStore(DB_STORE).index("synced");
-        const pending = [];
+        if (!db) return;
+        var tx = db.transaction([DB_STORE], "readonly");
+        var store = tx.objectStore(DB_STORE);
+        var index = store.index("synced");
+        var pending = [];
 
         index.openCursor(IDBKeyRange.only(false)).onsuccess = function (e) {
-          const cursor = e.target.result;
+          var cursor = e.target.result;
           if (cursor) {
             pending.push(cursor.value);
             cursor.continue();
           } else {
-            pending.forEach(sendEntry);
+            for (var i = 0; i < pending.length; i++) {
+                sendEntry(pending[i]);
+            }
           }
         };
       }
 
       function sendEntry(entry) {
-        return fetch(`${getServerUrl()}/submit`, {
+        return fetch(getServerUrl() + "/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(entry),
         })
-          .then((res) => {
+          .then(function(res) {
             if (res.ok) markSynced(entry.id);
             return res;
           })
-          .catch((err) => {
+          .catch(function(err) {
             console.warn("Sync failed", err);
             throw err;
           });
       }
 
       function markSynced(id) {
-        const tx = db.transaction([DB_STORE], "readwrite");
-        const store = tx.objectStore(DB_STORE);
-        const req = store.get(id);
+        var tx = db.transaction([DB_STORE], "readwrite");
+        var store = tx.objectStore(DB_STORE);
+        var req = store.get(id);
         req.onsuccess = function () {
-          const record = req.result;
+          var record = req.result;
           if (record) {
             record.synced = true;
             store.put(record);
@@ -813,7 +838,7 @@
       }
 
       function renderEntry(entry) {
-        let badge = "";
+        var badge = "";
         if (entry.remote) {
           badge = '<span class="sync-badge remote">Cloud</span>';
         } else {
@@ -822,17 +847,18 @@
             : '<span class="sync-badge pending">Pending</span>';
         }
 
-        return `
-        <div class="entry">
-          ${badge}
-          <strong>${entry.name}</strong><br>
-          <small>${entry.number} | ${entry.email}</small><br>
-          <div style="font-size: 13px; margin-top: 5px;">
-            <b>Age:</b> ${entry.ageGroup} | <b>Source:</b> ${entry.source} | <b>Pin:</b> ${entry.pinCode}
-          </div>
-          ${entry.feedback ? `<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"${entry.feedback}"</div>` : ""}
-          <div class="meta">${new Date(entry.time).toLocaleString()}</div>
-        </div>`;
+        return (
+          '<div class="entry">' +
+          badge +
+          "<strong>" + entry.name + "</strong><br>" +
+          "<small>" + entry.number + " | " + entry.email + "</small><br>" +
+          '<div style="font-size: 13px; margin-top: 5px;">' +
+          "<b>Age:</b> " + entry.ageGroup + " | <b>Source:</b> " + entry.source + " | <b>Pin:</b> " + entry.pinCode +
+          "</div>" +
+          (entry.feedback ? '<div style="font-size: 13px; font-style: italic; color: #666; margin-top: 4px;">"' + entry.feedback + '"</div>' : "") +
+          '<div class="meta">' + new Date(entry.time).toLocaleString() + "</div>" +
+          "</div>"
+        );
       }
     </script>
   </body>
