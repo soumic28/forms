@@ -542,7 +542,7 @@
             pinCode: document.getElementById("pinCode").value.trim(),
             feedback: document.getElementById("feedback").value.trim(),
             time: new Date().toISOString(),
-            synced: false,
+            synced: 0,
           };
 
           var tx = db.transaction([DB_STORE], "readwrite");
@@ -794,18 +794,33 @@
         var store = tx.objectStore(DB_STORE);
         var index = store.index("synced");
         var pending = [];
+        var range = IDBKeyRange.only(0);
 
-        index.openCursor(IDBKeyRange.only(false)).onsuccess = function (e) {
-          var cursor = e.target.result;
-          if (cursor) {
-            pending.push(cursor.value);
-            cursor.continue();
-          } else {
-            for (var i = 0; i < pending.length; i++) {
+        try {
+          index.openCursor(range).onsuccess = function (e) {
+            var cursor = e.target.result;
+            if (cursor) {
+              pending.push(cursor.value);
+              cursor.continue();
+            } else {
+              for (var i = 0; i < pending.length; i++) {
                 sendEntry(pending[i]);
+              }
             }
-          }
-        };
+          };
+        } catch (err) {
+          log("Cursor error: " + err.message);
+          // Fallback: search all
+          store.openCursor().onsuccess = function (e) {
+            var cursor = e.target.result;
+            if (cursor) {
+              if (cursor.value.synced === 0 || cursor.value.synced === false) {
+                  sendEntry(cursor.value);
+              }
+              cursor.continue();
+            }
+          };
+        }
       }
 
       function sendEntry(entry) {
@@ -831,7 +846,7 @@
         req.onsuccess = function () {
           var record = req.result;
           if (record) {
-            record.synced = true;
+            record.synced = 1;
             store.put(record);
           }
         };
@@ -842,7 +857,7 @@
         if (entry.remote) {
           badge = '<span class="sync-badge remote">Cloud</span>';
         } else {
-          badge = entry.synced
+          badge = (entry.synced === 1 || entry.synced === true)
             ? '<span class="sync-badge synced">Synced</span>'
             : '<span class="sync-badge pending">Pending</span>';
         }
