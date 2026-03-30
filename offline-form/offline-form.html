@@ -167,21 +167,30 @@
         border-top: 1px solid #f0f0f0;
         padding-top: 8px;
       }
-      .buttons {
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+      .buttons button {
+        flex: 1;
+        min-width: 120px;
       }
-      button {
-        padding: 8px 16px;
-        border-radius: 4px;
-        border: 1px solid var(--border);
-        background: #fff;
-        cursor: pointer;
-        font-size: 14px;
+      .debug-panel {
+        margin-top: 30px;
+        background: #333;
+        color: #00ff00;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 11px;
+        display: none;
       }
-      button:hover { background: #f8f8f8; }
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+      .status-ok { background: var(--success); }
+      .status-err { background: #ea4335; }
+      
       .loader {
         width: 16px;
         height: 16px;
@@ -383,11 +392,18 @@
         <button id="showBtn">Show Local Entries</button>
         <button id="fetchBtn" style="background: var(--accent); border-color: var(--purple);">Fetch from Server</button>
         <button id="copyBtn">Copy All Data</button>
+        <button id="testBtn">Test Connection</button>
+        <button id="debugBtn" style="background: #eee;">Debug Logs</button>
         <button id="exportJsonBtn">Export JSON</button>
         <button id="exportCsvBtn">Export CSV</button>
       </div>
 
       <div id="entries"></div>
+      
+      <div id="debugPanel" class="debug-panel">
+        <strong>Mobile Diagnostics:</strong>
+        <div id="debugContent"></div>
+      </div>
     </div>
 
     <script>
@@ -420,9 +436,23 @@
         return url.endsWith("/") ? url.slice(0, -1) : url;
       }
 
+      function log(msg, type = "info") {
+        const panel = document.getElementById("debugPanel");
+        const content = document.getElementById("debugContent");
+        const time = new Date().toLocaleTimeString();
+        content.innerHTML = `[${time}] ${msg}<br>` + content.innerHTML;
+        console.log(`[FORM DEBUG] ${msg}`);
+      }
+
       const request = indexedDB.open(DB_NAME, 2);
 
+      request.onerror = function(event) {
+        log("IndexedDB failed: " + event.target.error, "err");
+        alert("CRITICAL: Local database is blocked. If you are on iPhone, try opening this file in Chrome instead of Safari, or disable 'Incognito' mode.");
+      };
+
       request.onupgradeneeded = function (event) {
+        log("Database upgrade/init started...");
         db = event.target.result;
         const oldVersion = event.oldVersion;
         let store;
@@ -463,24 +493,45 @@
         };
 
         const tx = db.transaction([DB_STORE], "readwrite");
-        const addReq = tx.objectStore(DB_STORE).add(entry);
+        const store = tx.objectStore(DB_STORE);
+        
+        tx.onerror = (e) => {
+            log("Transaction Error: " + e.target.error);
+            alert("Storage full or blocked!");
+            finishSubmit();
+        };
+
+        const addReq = store.add(entry);
 
         addReq.onsuccess = (e) => {
           const id = e.target.result;
           entry.id = id;
+          log("Saved locally to ID: " + id);
           
           // Reset Form
           document.getElementById("myForm").reset();
           
           // Proactive Sync
           if (navigator.onLine) {
-            sendEntry(entry).finally(() => {
+            log("Online detected. Syncing...");
+            sendEntry(entry).then(() => {
+                log("Sync successful!");
+            }).catch(err => {
+                log("Immediate sync failed (expected if offline or CORS)");
+            }).finally(() => {
                 finishSubmit();
             });
           } else {
+            log("Offline mode. Stored locally.");
             alert("Saved Offline! Will sync when online.");
             finishSubmit();
           }
+        };
+
+        addReq.onerror = (e) => {
+            log("Add Request Error: " + e.target.error);
+            alert("Could not save. Check browser settings.");
+            finishSubmit();
         };
         
         function finishSubmit() {
@@ -557,6 +608,36 @@
             alert("All entries copied to clipboard!");
           });
         });
+      });
+
+      document.getElementById("testBtn").addEventListener("click", function() {
+        const btn = document.getElementById("testBtn");
+        btn.disabled = true;
+        btn.innerText = "Testing...";
+        log("Testing connection to " + getServerUrl() + "/...");
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        fetch(getServerUrl() + "/", { mode: 'no-cors', signal: controller.signal })
+          .then(() => {
+            log("Server is reachable!");
+            alert("Success! Your phone can talk to the server.");
+          })
+          .catch(err => {
+            log("Connection failed: " + err.message);
+            alert("Failed! Cannot reach server. Check URL, IP, or if Server is running.");
+          })
+          .finally(() => {
+            clearTimeout(timeoutId);
+            btn.disabled = false;
+            btn.innerText = "Test Connection";
+          });
+      });
+
+      document.getElementById("debugBtn").addEventListener("click", function() {
+        const panel = document.getElementById("debugPanel");
+        panel.style.display = panel.style.display === "block" ? "none" : "block";
       });
 
       document.getElementById("exportJsonBtn").addEventListener("click", function () {
