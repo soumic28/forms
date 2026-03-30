@@ -46,6 +46,7 @@ app.post("/submit", async (req, res) => {
   }
 
   try {
+    await initDB();
     await pool.query(
       `INSERT INTO form_entries
          (name, number, email, age_group, source, pin_code, feedback, submitted_at)
@@ -59,11 +60,7 @@ app.post("/submit", async (req, res) => {
   }
 });
 
-initDB()
-  .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error("Failed to connect to DB:", err.message);
-    process.exit(1);
-  });
+// Local dev only — Vercel manages its own listener
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
